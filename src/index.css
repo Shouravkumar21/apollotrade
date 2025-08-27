@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Small theme tweaks */
+:root{
+  --bg:#0b1220;
+  --card:#0f1724;
+  --muted:#94a3b8;
+}
+body { background: var(--bg); color: #e6eef8; }
+.card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06)); border: 1px solid rgba(255,255,255,0.03); border-radius: 14px; }
+.btn { @apply px-3 py-2 rounded-md font-medium; }
+.input { @apply w-full p-3 rounded-md bg-slate-900 border border-slate-800; }
+.tag { @apply inline-block px-3 py-1 rounded-full border border-slate-700 text-sm; }
