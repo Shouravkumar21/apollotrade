@@ -357,49 +357,279 @@
 
 
 
-import React, { useState } from "react";
+// import React, { useState } from "react";
+// import "./App.css";
+// // Utility to parse plain English queries into structured filters
+// function parseQuery(query) {
+//   const filters = {};
+
+//   // Detect chain
+//   if (/sol/i.test(query)) filters.chain = "solana";
+//   else if (/eth/i.test(query)) filters.chain = "ethereum";
+//   else if (/bnb/i.test(query)) filters.chain = "bsc";
+//   else if (/polygon/i.test(query)) filters.chain = "polygon";
+
+//   // MarketCap filters
+//   const under = query.match(/under\s?\$?([\d.]+)m/i);
+//   const between = query.match(/between\s?\$?([\d.]+)m\s?and\s?\$?([\d.]+)m/i);
+//   if (under) {
+//     filters.marketCap = { lt: parseFloat(under[1]) * 1_000_000 };
+//   } else if (between) {
+//     filters.marketCap = {
+//       gt: parseFloat(between[1]) * 1_000_000,
+//       lt: parseFloat(between[2]) * 1_000_000,
+//     };
+//   }
+
+//   // Liquidity
+//   const liquidity = query.match(/liquidity above\s?\$?([\d.]+)k?/i);
+//   if (liquidity) filters.liquidity = { gt: parseFloat(liquidity[1]) * 1000 };
+
+//   // Price
+//   const price = query.match(/price under\s?\$?([\d.]+)/i);
+//   if (price) filters.price = { lt: parseFloat(price[1]) };
+
+//   // Holders
+//   const holders = query.match(/>(\d+)\s?holders/i);
+//   if (holders) filters.holders = { gt: parseInt(holders[1]) };
+
+//   // Volume change
+//   const vol1h = query.match(/1h vol\s?\+?(\d+)%/i);
+//   const vol24h = query.match(/24h vol\s?\+?(\d+)%/i);
+//   if (vol1h) filters.volume1hChange = { gt: parseFloat(vol1h[1]) };
+//   if (vol24h) filters.volume24hChange = { gt: parseFloat(vol24h[1]) };
+
+//   // Honeypot score
+//   const honeypot = query.match(/honeypot score above (\d+)/i);
+//   if (honeypot) filters.honeypotScore = { gt: parseFloat(honeypot[1]) };
+
+//   return filters;
+// }
+
+// // Apply filters to token list
+// function applyFilters(tokens, filters) {
+//   return tokens.filter((t) => {
+//     const mcap = t.marketCapNum || 0;
+//     const liq = t.liquidityNum || 0;
+//     const price = t.priceNum || 0;
+//     const vol24h = t.volume24hNum || 0;
+//     const holders = t.holders || 0;
+//     const honeypot = t.honeypotScore || 0;
+
+//     if (filters.marketCap?.lt && mcap >= filters.marketCap.lt) return false;
+//     if (filters.marketCap?.gt && mcap <= filters.marketCap.gt) return false;
+//     if (filters.liquidity?.gt && liq <= filters.liquidity.gt) return false;
+//     if (filters.price?.lt && price >= filters.price.lt) return false;
+//     if (filters.volume24hChange?.gt && vol24h <= filters.volume24hChange.gt) return false;
+//     if (filters.holders?.gt && holders <= filters.holders.gt) return false;
+//     if (filters.honeypotScore?.gt && honeypot <= filters.honeypotScore.gt) return false;
+
+//     return true;
+//   });
+// }
+
+// export default function App() {
+//   const [query, setQuery] = useState("");
+//   const [filters, setFilters] = useState(null);
+//   const [tokens, setTokens] = useState([]);
+//   const [loading, setLoading] = useState(false);
+
+//   const dummyQueries = [
+//     "show sol tokens under 5m mcap with 1h vol +30% and honeypot score above 70",
+//     "eth tokens between 10m and 50m mcap with 24h vol +100%",
+//     "find new bnb tokens under 2m mcap with liquidity above 100k",
+//     "polygon tokens with price under $1 and 24h vol +200%",
+//     "list meme coins on solana with >50 holders and honeypot score above 80",
+//   ];
+
+//   const handleSearch = async (q = query) => {
+//     if (!q.trim()) return;
+//     setLoading(true);
+//     const parsed = parseQuery(q);
+//     setFilters(parsed);
+
+//     try {
+//       const res = await fetch(
+//         `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(
+//           parsed.chain || "sol"
+//         )}`
+//       );
+//       if (!res.ok) throw new Error("Dexscreener API error");
+//       const data = await res.json();
+
+//       // Deduplicate tokens by address
+//       const seen = new Set();
+//       let normalized = (data.pairs || [])
+//         .filter((p) => {
+//           if (!p.baseToken?.address) return false;
+//           if (seen.has(p.baseToken.address)) return false;
+//           seen.add(p.baseToken.address);
+//           return true;
+//         })
+//         .map((p) => ({
+//           address: p.baseToken?.address,
+//           name: p.baseToken?.name,
+//           symbol: p.baseToken?.symbol,
+//           price: p.priceUsd ? `$${parseFloat(p.priceUsd).toFixed(4)}` : "N/A",
+//           priceNum: p.priceUsd ? parseFloat(p.priceUsd) : 0,
+//           liquidity: p.liquidity?.usd
+//             ? `$${(p.liquidity.usd / 1_000).toFixed(1)}k`
+//             : "N/A",
+//           liquidityNum: p.liquidity?.usd || 0,
+//           volume24h: p.volume?.h24
+//             ? `$${(p.volume.h24 / 1_000).toFixed(1)}k`
+//             : "N/A",
+//           volume24hNum: p.volume?.h24 || 0,
+//           marketCap: p.fdv ? `$${(p.fdv / 1_000_000).toFixed(2)}M` : "N/A",
+//           marketCapNum: p.fdv || 0,
+//           holders: Math.floor(Math.random() * 500), // placeholder
+//           honeypotScore: Math.floor(Math.random() * 30) + 70, // replace with GoPlus API
+//         }));
+
+//       // Apply filters
+//       normalized = applyFilters(normalized, parsed);
+
+//       setTokens(normalized.slice(0, 10)); // show top 10
+//     } catch (err) {
+//       console.error("Error fetching tokens:", err);
+//     }
+
+//     setLoading(false);
+//   };
+
+//   return (
+//     <div className="min-h-screen text-white p-8" style={{ backgroundColor: "#060817" }}>
+//       <h1 className="text-2xl font-bold mb-4 text-center" style={{
+//   fontSize: "clamp(2.5rem, 8vw, 5rem)",
+//   fontWeight: 700,
+//   marginBottom: "1.5rem",
+//   background: "linear-gradient(135deg, #fff 0%, #FF6B35 50%, #F7931A 100%)",
+//   WebkitBackgroundClip: "text",
+//   WebkitTextFillColor: "transparent",
+//   lineHeight: 1.1,
+// }}>AI Trade Copilot</h1>
+//       {/* Input */}
+//       <div className="flex mb-6">
+//         <input
+//           className="flex-1 p-2 rounded bg-gray-800 text-white"
+//           style={{
+//   padding: "15px",
+//   borderRadius: "50px 0 0 50px",
+// }}
+//           placeholder="Type your query..."
+//           value={query}
+//           onChange={(e) => setQuery(e.target.value)}
+//         />
+//         <button
+//           onClick={() => handleSearch()}
+//           className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded bg-gradient-to-br from-[#FF6B35] to-[#F7931A] 
+//   hover:from-[#F7931A] hover:to-[#FF6B35]
+//   text-white px-8 py-2 rounded-r-[50px] transition"
+//           style={{
+//   background: "linear-gradient(135deg, rgb(255, 107, 53) 0%, rgb(247, 147, 26) 100%)",
+//   color: "#fff",
+//   padding: "10px 30px",
+//   borderRadius: "0 50px 50px 0",
+//   border: "none",
+//   cursor: "pointer",
+// }}
+//         >
+//           Search
+//         </button>
+//       </div>
+//       {/* Dummy Queries */}
+//       <div className="mb-4 flex justify-center flex-wrap gap-2">
+//         {dummyQueries.map((q, i) => (
+//           <button
+//             key={i}
+//             onClick={() => {
+//               setQuery(q);
+//               handleSearch(q);
+//             }}
+//             className="px-3 py-1 bg-gray-700 rounded text-sm hover:bg-gray-600" style={{
+//   background: "linear-gradient(135deg, #FF6B35 0%, #F7931A 100%)",
+//   color: "#ffffff",
+//   padding: "8px 15px",
+// }}
+//           >
+//             {q}
+//           </button>
+//         ))}
+//       </div>
+
+
+
+//       {/* Parsed filters */}
+//       {filters && (
+//         <div className="mb-4 bg-gray-900 p-3 rounded text-xs hidden">
+//           <h3 className="font-semibold mb-1">Parsed filters</h3>
+//           <pre>{JSON.stringify(filters, null, 2)}</pre>
+//         </div>
+//       )}
+
+//       {/* Results */}
+//       {loading ? (
+//         <div className="text-center">Loading tokens...</div>
+//       ) : tokens.length === 0 ? (
+//         <div className="text-center">No tokens match your filters.</div>
+//       ) : (
+//         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//           {tokens.map((t, i) => (
+//             <div key={i} className="bg-gray-800 p-3 rounded shadow">
+//               <h4 className="font-semibold">
+//                 {t.name} ({t.symbol})
+//               </h4>
+//               <p>Price: {t.price}</p>
+//               <p>Liquidity: {t.liquidity}</p>
+//               <p>24h Vol: {t.volume24h}</p>
+//               <p>Market Cap: {t.marketCap}</p>
+//               <p>Holders: {t.holders}</p>
+//               <p>Honeypot Score: {t.honeypotScore}</p>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
+
+// Your Helius API Key
+const HELIUS_API_KEY = "e268f241-fbcd-44cf-8a8c-559154a2580d";
+
 // Utility to parse plain English queries into structured filters
 function parseQuery(query) {
   const filters = {};
-
-  // Detect chain
   if (/sol/i.test(query)) filters.chain = "solana";
   else if (/eth/i.test(query)) filters.chain = "ethereum";
   else if (/bnb/i.test(query)) filters.chain = "bsc";
   else if (/polygon/i.test(query)) filters.chain = "polygon";
 
-  // MarketCap filters
   const under = query.match(/under\s?\$?([\d.]+)m/i);
   const between = query.match(/between\s?\$?([\d.]+)m\s?and\s?\$?([\d.]+)m/i);
-  if (under) {
-    filters.marketCap = { lt: parseFloat(under[1]) * 1_000_000 };
-  } else if (between) {
+  if (under) filters.marketCap = { lt: parseFloat(under[1]) * 1_000_000 };
+  else if (between)
     filters.marketCap = {
       gt: parseFloat(between[1]) * 1_000_000,
       lt: parseFloat(between[2]) * 1_000_000,
     };
-  }
 
-  // Liquidity
   const liquidity = query.match(/liquidity above\s?\$?([\d.]+)k?/i);
   if (liquidity) filters.liquidity = { gt: parseFloat(liquidity[1]) * 1000 };
 
-  // Price
   const price = query.match(/price under\s?\$?([\d.]+)/i);
   if (price) filters.price = { lt: parseFloat(price[1]) };
 
-  // Holders
   const holders = query.match(/>(\d+)\s?holders/i);
   if (holders) filters.holders = { gt: parseInt(holders[1]) };
 
-  // Volume change
   const vol1h = query.match(/1h vol\s?\+?(\d+)%/i);
   const vol24h = query.match(/24h vol\s?\+?(\d+)%/i);
   if (vol1h) filters.volume1hChange = { gt: parseFloat(vol1h[1]) };
   if (vol24h) filters.volume24hChange = { gt: parseFloat(vol24h[1]) };
 
-  // Honeypot score
   const honeypot = query.match(/honeypot score above (\d+)/i);
   if (honeypot) filters.honeypotScore = { gt: parseFloat(honeypot[1]) };
 
@@ -420,27 +650,65 @@ function applyFilters(tokens, filters) {
     if (filters.marketCap?.gt && mcap <= filters.marketCap.gt) return false;
     if (filters.liquidity?.gt && liq <= filters.liquidity.gt) return false;
     if (filters.price?.lt && price >= filters.price.lt) return false;
-    if (filters.volume24hChange?.gt && vol24h <= filters.volume24hChange.gt) return false;
+    if (filters.volume24hChange?.gt && vol24h <= filters.volume24hChange.gt)
+      return false;
     if (filters.holders?.gt && holders <= filters.holders.gt) return false;
-    if (filters.honeypotScore?.gt && honeypot <= filters.honeypotScore.gt) return false;
+    if (filters.honeypotScore?.gt && honeypot <= filters.honeypotScore.gt)
+      return false;
 
     return true;
   });
 }
+
+// Fetch token holders from Helius API
+const fetchTokenHolders = async (tokenAddress) => {
+  try {
+    const res = await fetch(
+      `https://api.helius.dev/v0/token/holders/${tokenAddress}`,
+      {
+        headers: { "Authorization": `Bearer ${HELIUS_API_KEY}` },
+      }
+    );
+    const data = await res.json();
+    return data.holders?.length || 0;
+  } catch (err) {
+    console.error(err);
+    return 0;
+  }
+};
 
 export default function App() {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(null);
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [radarAlerts, setRadarAlerts] = useState([]);
+
+  const knownTokens = useRef(new Set());
+  const prevStats = useRef(new Map());
+  const displayedAlerts = useRef(new Set());
 
   const dummyQueries = [
-    "show sol tokens under 5m mcap with 1h vol +30% and honeypot score above 70",
-    "eth tokens between 10m and 50m mcap with 24h vol +100%",
+    "show sol tokens under 5m mcap",
+    "show eth tokens under 10m mcap with liquidity above 100000",
+    "eth tokens under 10m",
     "find new bnb tokens under 2m mcap with liquidity above 100k",
     "polygon tokens with price under $1 and 24h vol +200%",
     "list meme coins on solana with >50 holders and honeypot score above 80",
   ];
+
+  const fetchTokens = async (chain = "sol") => {
+    try {
+      const res = await fetch(
+        `https://api.dexscreener.com/latest/dex/search?q=${chain}`
+      );
+      if (!res.ok) throw new Error("Dexscreener API error");
+      return await res.json();
+    } catch (err) {
+      console.error(err);
+      return { pairs: [] };
+    }
+  };
 
   const handleSearch = async (q = query) => {
     if (!q.trim()) return;
@@ -448,126 +716,146 @@ export default function App() {
     const parsed = parseQuery(q);
     setFilters(parsed);
 
-    try {
-      const res = await fetch(
-        `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(
-          parsed.chain || "sol"
-        )}`
-      );
-      if (!res.ok) throw new Error("Dexscreener API error");
-      const data = await res.json();
+    const data = await fetchTokens(parsed.chain || "sol");
+    const mapByName = new Map();
 
-      // Deduplicate tokens by address
-      const seen = new Set();
-      let normalized = (data.pairs || [])
-        .filter((p) => {
-          if (!p.baseToken?.address) return false;
-          if (seen.has(p.baseToken.address)) return false;
-          seen.add(p.baseToken.address);
-          return true;
-        })
-        .map((p) => ({
-          address: p.baseToken?.address,
-          name: p.baseToken?.name,
-          symbol: p.baseToken?.symbol,
-          price: p.priceUsd ? `$${parseFloat(p.priceUsd).toFixed(4)}` : "N/A",
-          priceNum: p.priceUsd ? parseFloat(p.priceUsd) : 0,
-          liquidity: p.liquidity?.usd
-            ? `$${(p.liquidity.usd / 1_000).toFixed(1)}k`
-            : "N/A",
-          liquidityNum: p.liquidity?.usd || 0,
-          volume24h: p.volume?.h24
-            ? `$${(p.volume.h24 / 1_000).toFixed(1)}k`
-            : "N/A",
-          volume24hNum: p.volume?.h24 || 0,
-          marketCap: p.fdv ? `$${(p.fdv / 1_000_000).toFixed(2)}M` : "N/A",
-          marketCapNum: p.fdv || 0,
-          holders: Math.floor(Math.random() * 500), // placeholder
-          honeypotScore: Math.floor(Math.random() * 30) + 70, // replace with GoPlus API
-        }));
+    for (const p of data.pairs || []) {
+      if (!p.baseToken?.address) continue;
+      const key = `${p.baseToken.name}-${p.baseToken.symbol}`;
 
-      // Apply filters
-      normalized = applyFilters(normalized, parsed);
+      const holdersCount = await fetchTokenHolders(p.baseToken.address);
 
-      setTokens(normalized.slice(0, 10)); // show top 10
-    } catch (err) {
-      console.error("Error fetching tokens:", err);
+      const tokenObj = {
+        address: p.baseToken.address,
+        name: p.baseToken.name,
+        symbol: p.baseToken.symbol,
+        price: p.priceUsd ? `$${parseFloat(p.priceUsd).toFixed(4)}` : "N/A",
+        priceNum: p.priceUsd ? parseFloat(p.priceUsd) : 0,
+        liquidity: p.liquidity?.usd
+          ? `$${(p.liquidity.usd / 1_000).toFixed(1)}k`
+          : "N/A",
+        liquidityNum: p.liquidity?.usd || 0,
+        volume24h: p.volume?.h24
+          ? `$${(p.volume.h24 / 1_000).toFixed(1)}k`
+          : "N/A",
+        volume24hNum: p.volume?.h24 || 0,
+        marketCap: p.fdv ? `$${(p.fdv / 1_000_000).toFixed(2)}M` : "N/A",
+        marketCapNum: p.fdv || 0,
+        holders: holdersCount,
+        honeypotScore: 0,
+      };
+
+      if (!mapByName.has(key)) {
+        mapByName.set(key, tokenObj);
+      } else {
+        const existing = mapByName.get(key);
+        if (tokenObj.liquidityNum > existing.liquidityNum) {
+          mapByName.set(key, tokenObj);
+        }
+      }
     }
 
+    let normalized = Array.from(mapByName.values());
+    normalized = applyFilters(normalized, parsed);
+    setTokens(normalized.slice(0, 10));
     setLoading(false);
   };
 
+  // --- First-Mover Radar ---
+  const runRadar = async () => {
+    const data = await fetchTokens("sol");
+    const newAlerts = [];
+
+    for (const p of data.pairs || []) {
+      if (!p.baseToken?.address) continue;
+      const tokenId = p.baseToken.address;
+
+      // New token detection
+      if (!knownTokens.current.has(tokenId)) {
+        knownTokens.current.add(tokenId);
+        const alertKey = `new-${tokenId}`;
+        if (!displayedAlerts.current.has(alertKey)) {
+          newAlerts.push(`🚀 New token launched: ${p.baseToken.name}`);
+          displayedAlerts.current.add(alertKey);
+        }
+      }
+
+      // Pre-trend detection
+      const prev = prevStats.current.get(tokenId);
+      if (prev) {
+        const liqChange = ((p.liquidity?.usd || 0) - (prev.liquidity?.usd || 0)) / ((prev.liquidity?.usd || 1));
+        const volChange = ((p.volume?.h1 || 0) - (prev.volume?.h1 || 0)) / ((prev.volume?.h1 || 1));
+        const alertKey = `trend-${tokenId}`;
+        if ((liqChange > 0.5 || volChange > 0.5) && !displayedAlerts.current.has(alertKey)) {
+          newAlerts.push(`📈 Pre-trend detected: ${p.baseToken.name}`);
+          displayedAlerts.current.add(alertKey);
+        }
+      }
+
+      prevStats.current.set(tokenId, p);
+    }
+
+    setRadarAlerts((prev) => {
+      const combined = [...newAlerts, ...prev];
+      return [...new Set(combined)].slice(0, 20); // latest 20 alerts
+    });
+  };
+
+  useEffect(() => {
+    const interval = setInterval(runRadar, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen text-white p-8" style={{ backgroundColor: "#060817" }}>
-      <h1 className="text-2xl font-bold mb-4 text-center" style={{
-  fontSize: "clamp(2.5rem, 8vw, 5rem)",
-  fontWeight: 700,
-  marginBottom: "1.5rem",
-  background: "linear-gradient(135deg, #fff 0%, #FF6B35 50%, #F7931A 100%)",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-  lineHeight: 1.1,
-}}>AI Trade Copilot</h1>
-      {/* Input */}
+      <h1 style={{
+          fontSize: "clamp(2.5rem, 8vw, 5rem)",
+          fontWeight: 700,
+          marginBottom: "1.5rem",
+          background: "linear-gradient(135deg, #fff 0%, #FF6B35 50%, #F7931A 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          lineHeight: 1.1,
+          textAlign: "center"
+      }}>AI Trade Copilot</h1>
+
       <div className="flex mb-6">
         <input
           className="flex-1 p-2 rounded bg-gray-800 text-white"
-          style={{
-  padding: "15px",
-  borderRadius: "50px 0 0 50px",
-}}
+          style={{ padding: "15px", borderRadius: "50px 0 0 50px" }}
           placeholder="Type your query..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <button
           onClick={() => handleSearch()}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded bg-gradient-to-br from-[#FF6B35] to-[#F7931A] 
-  hover:from-[#F7931A] hover:to-[#FF6B35]
-  text-white px-8 py-2 rounded-r-[50px] transition"
           style={{
-  background: "linear-gradient(135deg, rgb(255, 107, 53) 0%, rgb(247, 147, 26) 100%)",
-  color: "#fff",
-  padding: "10px 30px",
-  borderRadius: "0 50px 50px 0",
-  border: "none",
-  cursor: "pointer",
-}}
+            background: "linear-gradient(135deg, rgb(255, 107, 53) 0%, rgb(247, 147, 26) 100%)",
+            color: "#fff",
+            padding: "10px 30px",
+            borderRadius: "0 50px 50px 0",
+            border: "none",
+            cursor: "pointer",
+          }}
         >
           Search
         </button>
       </div>
-      {/* Dummy Queries */}
+
       <div className="mb-4 flex justify-center flex-wrap gap-2">
         {dummyQueries.map((q, i) => (
-          <button
-            key={i}
-            onClick={() => {
-              setQuery(q);
-              handleSearch(q);
-            }}
-            className="px-3 py-1 bg-gray-700 rounded text-sm hover:bg-gray-600" style={{
-  background: "linear-gradient(135deg, #FF6B35 0%, #F7931A 100%)",
-  color: "#ffffff",
-  padding: "8px 15px",
-}}
-          >
-            {q}
-          </button>
+          <button key={i} onClick={() => { setQuery(q); handleSearch(q); }}
+            style={{background: "linear-gradient(135deg, #FF6B35 0%, #F7931A 100%)", color: "#fff", padding: "8px 15px", borderRadius: "6px", margin: "2px"}}>{q}</button>
         ))}
       </div>
 
-
-
-      {/* Parsed filters */}
-      {filters && (
-        <div className="mb-4 bg-gray-900 p-3 rounded text-xs hidden">
-          <h3 className="font-semibold mb-1">Parsed filters</h3>
-          <pre>{JSON.stringify(filters, null, 2)}</pre>
+      {radarAlerts.length > 0 && (
+        <div className="mb-6 p-4 bg-gray-700 rounded">
+          <h3 className="font-semibold mb-2">🚨 First-Mover Radar Alerts:</h3>
+          <ul>{radarAlerts.map((alert, i) => <li key={i}>{alert}</li>)}</ul>
         </div>
       )}
 
-      {/* Results */}
       {loading ? (
         <div className="text-center">Loading tokens...</div>
       ) : tokens.length === 0 ? (
@@ -576,15 +864,13 @@ export default function App() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {tokens.map((t, i) => (
             <div key={i} className="bg-gray-800 p-3 rounded shadow">
-              <h4 className="font-semibold">
-                {t.name} ({t.symbol})
-              </h4>
+              <h4 className="font-semibold">{t.name} ({t.symbol})</h4>
               <p>Price: {t.price}</p>
               <p>Liquidity: {t.liquidity}</p>
               <p>24h Vol: {t.volume24h}</p>
               <p>Market Cap: {t.marketCap}</p>
-              <p>Holders: {t.holders}</p>
-              <p>Honeypot Score: {t.honeypotScore}</p>
+              {/* <p>Holders: {t.holders}</p> */}
+              {/* <p>Honeypot Score: {t.honeypotScore}</p> */}
             </div>
           ))}
         </div>
@@ -592,9 +878,6 @@ export default function App() {
     </div>
   );
 }
-
-
-
 
 
 
